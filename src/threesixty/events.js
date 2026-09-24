@@ -1,3 +1,22 @@
+import { dragDirection } from '../geometry.js';
+
+function pointerX(event) {
+  if (event.touches && event.touches.length) {
+    return event.touches[0].clientX;
+  }
+
+  return event.clientX !== undefined ? event.clientX : event.pageX;
+}
+
+function isEditableTarget(target) {
+  return !!target && (
+    target.tagName === 'INPUT' ||
+    target.tagName === 'TEXTAREA' ||
+    target.tagName === 'SELECT' ||
+    target.isContentEditable
+  );
+}
+
 class Events {
   #dragOrigin = null;
   #options = null;
@@ -7,10 +26,24 @@ class Events {
   constructor(threesixty, options) {
     this.#options = options;
 
+    const dragTo = (position, tolerance) => {
+      if (this.#dragOrigin === null) {
+        return;
+      }
+
+      const direction = dragDirection(this.#dragOrigin, position, tolerance);
+
+      if (direction !== 0) {
+        threesixty.stop();
+        direction < 0 ? threesixty.prev() : threesixty.next();
+        this.#dragOrigin = position;
+      }
+    };
+
     this.#eventHandlers = {
       container: {
-        mousedown: (e) => this.#dragOrigin = e.pageX,
-        touchstart: (e) => this.#dragOrigin = e.touches[0].clientX,
+        mousedown: (e) => this.#dragOrigin = pointerX(e),
+        touchstart: (e) => this.#dragOrigin = pointerX(e),
         touchend: () => this.#dragOrigin = null,
       },
       prev: {
@@ -43,28 +76,30 @@ class Events {
       },
       global: {
         mouseup: () => this.#dragOrigin = null,
-        mousemove: (e) => {
-          if (this.#dragOrigin && Math.abs(this.#dragOrigin - e.pageX) > this.#options.dragTolerance) {
-            threesixty.stop();
-            this.#dragOrigin > e.pageX ? threesixty.prev() : threesixty.next();
-            this.#dragOrigin = e.pageX;
-          }
-        },
-        touchmove: (e) => {
-          if (this.#dragOrigin && Math.abs(this.#dragOrigin - e.touches[0].clientX) > this.#options.swipeTolerance) {
-            threesixty.stop();
-            this.#dragOrigin > e.touches[0].clientX ? threesixty.prev() : threesixty.next();
-            this.#dragOrigin = e.touches[0].clientX;
-          }
-        },
+        mousemove: (e) => dragTo(pointerX(e), this.#options.dragTolerance),
+        touchmove: (e) => dragTo(pointerX(e), this.#options.swipeTolerance),
         keydown: (e) => {
-          if ([37, 39].includes(e.keyCode)) {
-            threesixty.play(37 === e.keyCode);
+          if (isEditableTarget(e.target)) {
+            return;
           }
-        },
-        keyup: (e) => {
-          if ([37, 39].includes(e.keyCode)) {
-            threesixty.stop();
+
+          switch (e.keyCode) {
+            case 37:
+              e.preventDefault();
+              threesixty.prev();
+              break;
+            case 39:
+              e.preventDefault();
+              threesixty.next();
+              break;
+            case 36:
+              e.preventDefault();
+              threesixty.goto(0);
+              break;
+            case 35:
+              e.preventDefault();
+              threesixty.goto(-1);
+              break;
           }
         }
       }
@@ -82,7 +117,6 @@ class Events {
     window.removeEventListener('mousemove', this.#eventHandlers.global.mousemove);
     window.removeEventListener('touchmove', this.#eventHandlers.global.touchmove);
     window.removeEventListener('keydown', this.#eventHandlers.global.keydown);
-    window.removeEventListener('keyup', this.#eventHandlers.global.keyup);
 
     if (this.#options.prev) {
       this.#options.prev.removeEventListener('mousedown', this.#eventHandlers.prev.mousedown);
@@ -112,7 +146,6 @@ class Events {
 
     if (this.#options.keys) {
       window.addEventListener('keydown', this.#eventHandlers.global.keydown);
-      window.addEventListener('keyup', this.#eventHandlers.global.keyup);
     }
 
     if (this.#options.prev) {

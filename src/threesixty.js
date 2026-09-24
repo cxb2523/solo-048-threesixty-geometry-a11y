@@ -1,8 +1,10 @@
 import Events from './threesixty/events.js';
+import { normalizeIndex, spriteGrid, spriteOffset } from './geometry.js';
 
 class ThreeSixty {
   #options = null;
   #index = 0;
+  #spriteColumns = 1;
 
   #loopTimeoutId = null;
   #looping = false;
@@ -82,7 +84,7 @@ class ThreeSixty {
   }
 
   goto(index) {
-    this.#index = (this.#options.count + index) % this.#options.count;
+    this.#index = normalizeIndex(index, this.#options.count);
 
     this._update();
   }
@@ -92,10 +94,10 @@ class ThreeSixty {
       return;
     }
 
-    this._loop(reversed);
     this.#looping = true;
     this.#maxloops = maxloops;
     this.nloops = 0;
+    this._loop(reversed);
   }
 
   stop () {
@@ -125,6 +127,13 @@ class ThreeSixty {
     this.container.style.backgroundPositionY = '';
     this.container.style.backgroundSize = '';
 
+    this.container.removeAttribute('tabindex');
+    this.container.removeAttribute('role');
+    this.container.removeAttribute('aria-orientation');
+    this.container.removeAttribute('aria-valuemin');
+    this.container.removeAttribute('aria-valuemax');
+    this.container.removeAttribute('aria-valuenow');
+
     if (this.isResponsive) {
       window.removeEventListener('resize', this._windowResizeListener);
     }
@@ -148,11 +157,15 @@ class ThreeSixty {
 
   _update () {
     if (this.sprite) {
-      this.container.style.backgroundPositionX = -(this.#index % this.#options.perRow) * this.containerWidth + 'px';
-      this.container.style.backgroundPositionY = -Math.floor(this.#index / this.#options.perRow) * this.containerHeight + 'px';
+      const offset = spriteOffset(this.#index, this.#spriteColumns, this.containerWidth, this.containerHeight);
+
+      this.container.style.backgroundPositionX = offset.x + 'px';
+      this.container.style.backgroundPositionY = offset.y + 'px';
     } else {
       this.container.style.backgroundImage = `url("${this.#options.image[this.#index]}")`;
     }
+
+    this.container.setAttribute('aria-valuenow', String(this.#index));
   }
 
   _windowResizeListener() {
@@ -169,10 +182,17 @@ class ThreeSixty {
     if (this.sprite) {
       this.container.style.backgroundImage = `url("${this.#options.image}")`;
 
-      const cols = this.#options.perRow;
-      const rows = Math.ceil(this.#options.count / this.#options.perRow);
-      this.container.style.backgroundSize = (cols * 100) + '% ' + (rows * 100) + '%';
+      const grid = spriteGrid(this.#options.count, this.#options.perRow);
+
+      this.#spriteColumns = grid.columns;
+      this.container.style.backgroundSize = (grid.columns * 100) + '% ' + (grid.rows * 100) + '%';
     }
+
+    this.container.setAttribute('tabindex', '0');
+    this.container.setAttribute('role', 'slider');
+    this.container.setAttribute('aria-orientation', 'horizontal');
+    this.container.setAttribute('aria-valuemin', '0');
+    this.container.setAttribute('aria-valuemax', String(Math.max(this.#options.count - 1, 0)));
 
     if (this.isResponsive) {
       window.addEventListener('resize', this._windowResizeListener);

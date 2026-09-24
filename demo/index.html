@@ -28,6 +28,19 @@
       align-items: center;
     }
 
+    .status {
+      margin: 12px 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status label {
+      cursor: pointer;
+      user-select: none;
+    }
+
     .button {
       position: relative;
       -webkit-appearance: none;
@@ -68,8 +81,12 @@
 <body>
   <div class="wrapper">
     <h1>ThreeSixty.js</h1>
-    <p>Drag, use keyboard arrows (&larr; & &rarr;) or click to rotate image.</p>
+    <p>Drag, use keyboard arrows (&larr; & &rarr;), Home/End or click to rotate image.</p>
     <div id="threesixty"></div>
+    <div class="status">
+      <span>Frame: <strong id="frame">1</strong> / 31</span>
+      <label><input type="checkbox" id="autoplay" checked> autoplay</label>
+    </div>
     <div class="buttons-wrapper">
       <button class="button" id="prev">Prev</button>
       spin
@@ -90,6 +107,15 @@
       });
 
       threesixty.play();
+
+      const frame = document.getElementById('frame');
+      setInterval(() => {
+        frame.textContent = threesixty.index + 1;
+      }, 50);
+
+      document.getElementById('autoplay').addEventListener('change', (e) => {
+        e.target.checked ? threesixty.play() : threesixty.stop();
+      });
     </script>
   </div>
 </body>
