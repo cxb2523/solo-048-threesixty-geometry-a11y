@@ -1,0 +1,45 @@
+{
+  "name": "@mladenilic/threesixty.js",
+  "version": "1.3.0",
+  "type": "module",
+  "title": "ThreeSixty.js",
+  "description": "360 product image view library",
+  "author": {
+    "name": "Mladen Ilic"
+  },
+  "scripts": {
+    "build:dist": "webpack --mode production",
+    "build:lib": "babel src -d lib",
+    "start": "webpack serve --mode development",
+    "test": "mocha --require test/setup.js test/**/*.test.js"
+  },
+  "main": "lib/threesixty.js",
+  "files": [
+    "src/*",
+    "lib/*",
+    "dist/*"
+  ],
+  "devDependencies": {
+    "@babel/cli": "^7.24.x",
+    "@babel/core": "7.24.x",
+    "@babel/preset-env": "7.24.x",
+    "babel-loader": "9.1.x",
+    "chai": "^5.1.0",
+    "jsdom": "^24.0.0",
+    "mocha": "^10.4.0",
+    "webpack": "5.91.x",
+    "webpack-cli": "5.1.x",
+    "webpack-dev-server": "^5.0.4"
+  },
+  "keywords": [
+    "360",
+    "image",
+    "product"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mladenilic/threesixty"
+  },
+  "homepage": "https://github.com/mladenilic/threesixty",
+  "license": "MIT"
+}
