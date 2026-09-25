@@ -1,4 +1,5 @@
 import Events from './threesixty/events.js';
+import { normalizeIndex, spriteColumn, spriteRow, spriteGrid } from './geometry.js';
 
 class ThreeSixty {
   #options = null;
@@ -10,6 +11,7 @@ class ThreeSixty {
 
   #events = null;
   #sprite = false;
+  #addedAriaLabel = false;
 
   constructor(container, options) {
     this.container = container;
@@ -82,7 +84,7 @@ class ThreeSixty {
   }
 
   goto(index) {
-    this.#index = (this.#options.count + index) % this.#options.count;
+    this.#index = normalizeIndex(index, this.#options.count);
 
     this._update();
   }
@@ -92,10 +94,11 @@ class ThreeSixty {
       return;
     }
 
-    this._loop(reversed);
     this.#looping = true;
     this.#maxloops = maxloops;
     this.nloops = 0;
+
+    this._loop(reversed);
   }
 
   stop () {
@@ -117,6 +120,17 @@ class ThreeSixty {
     this.stop();
 
     this.#events.destroy();
+
+    this.container.removeAttribute('tabindex');
+    this.container.removeAttribute('role');
+    this.container.removeAttribute('aria-valuemin');
+    this.container.removeAttribute('aria-valuemax');
+    this.container.removeAttribute('aria-valuenow');
+
+    if (this.#addedAriaLabel) {
+      this.container.removeAttribute('aria-label');
+      this.#addedAriaLabel = false;
+    }
 
     this.container.style.width = '';
     this.container.style.height = '';
@@ -148,11 +162,13 @@ class ThreeSixty {
 
   _update () {
     if (this.sprite) {
-      this.container.style.backgroundPositionX = -(this.#index % this.#options.perRow) * this.containerWidth + 'px';
-      this.container.style.backgroundPositionY = -Math.floor(this.#index / this.#options.perRow) * this.containerHeight + 'px';
+      this.container.style.backgroundPositionX = -spriteColumn(this.#index, this.#options.perRow) * this.containerWidth + 'px';
+      this.container.style.backgroundPositionY = -spriteRow(this.#index, this.#options.perRow) * this.containerHeight + 'px';
     } else {
       this.container.style.backgroundImage = `url("${this.#options.image[this.#index]}")`;
     }
+
+    this.container.setAttribute('aria-valuenow', String(this.#index));
   }
 
   _windowResizeListener() {
@@ -169,16 +185,29 @@ class ThreeSixty {
     if (this.sprite) {
       this.container.style.backgroundImage = `url("${this.#options.image}")`;
 
-      const cols = this.#options.perRow;
-      const rows = Math.ceil(this.#options.count / this.#options.perRow);
+      const { cols, rows } = spriteGrid(this.#options.count, this.#options.perRow);
       this.container.style.backgroundSize = (cols * 100) + '% ' + (rows * 100) + '%';
     }
+
+    this._initAccessibility();
 
     if (this.isResponsive) {
       window.addEventListener('resize', this._windowResizeListener);
     }
 
     this._update();
+  }
+
+  _initAccessibility() {
+    this.container.setAttribute('tabindex', '0');
+    this.container.setAttribute('role', 'slider');
+    this.container.setAttribute('aria-valuemin', '0');
+    this.container.setAttribute('aria-valuemax', String(Math.max(0, this.#options.count - 1)));
+
+    if (!this.container.hasAttribute('aria-label') && !this.container.hasAttribute('aria-labelledby')) {
+      this.container.setAttribute('aria-label', '360 degree product view');
+      this.#addedAriaLabel = true;
+    }
   }
 }
 

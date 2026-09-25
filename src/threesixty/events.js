@@ -1,17 +1,28 @@
+import { dragStep, pointerX } from '../geometry.js';
+
+const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable]';
+
+function isEditableTarget(target) {
+  return Boolean(target && typeof target.closest === 'function' && target.closest(EDITABLE_SELECTOR));
+}
+
 class Events {
   #dragOrigin = null;
   #options = null;
+  #threesixty = null;
 
   #eventHandlers = null;
 
   constructor(threesixty, options) {
     this.#options = options;
+    this.#threesixty = threesixty;
 
     this.#eventHandlers = {
       container: {
-        mousedown: (e) => this.#dragOrigin = e.pageX,
-        touchstart: (e) => this.#dragOrigin = e.touches[0].clientX,
+        mousedown: (e) => this.#dragOrigin = pointerX(e),
+        touchstart: (e) => this.#dragOrigin = pointerX(e),
         touchend: () => this.#dragOrigin = null,
+        keydown: (e) => this._onKeydown(e)
       },
       prev: {
         mousedown: (e) => {
@@ -43,46 +54,61 @@ class Events {
       },
       global: {
         mouseup: () => this.#dragOrigin = null,
-        mousemove: (e) => {
-          if (this.#dragOrigin && Math.abs(this.#dragOrigin - e.pageX) > this.#options.dragTolerance) {
-            threesixty.stop();
-            this.#dragOrigin > e.pageX ? threesixty.prev() : threesixty.next();
-            this.#dragOrigin = e.pageX;
-          }
-        },
-        touchmove: (e) => {
-          if (this.#dragOrigin && Math.abs(this.#dragOrigin - e.touches[0].clientX) > this.#options.swipeTolerance) {
-            threesixty.stop();
-            this.#dragOrigin > e.touches[0].clientX ? threesixty.prev() : threesixty.next();
-            this.#dragOrigin = e.touches[0].clientX;
-          }
-        },
-        keydown: (e) => {
-          if ([37, 39].includes(e.keyCode)) {
-            threesixty.play(37 === e.keyCode);
-          }
-        },
-        keyup: (e) => {
-          if ([37, 39].includes(e.keyCode)) {
-            threesixty.stop();
-          }
-        }
+        mousemove: (e) => this._onDrag(e, this.#options.dragTolerance),
+        touchmove: (e) => this._onDrag(e, this.#options.swipeTolerance)
       }
     };
 
     this._initEvents();
   }
 
+  _onDrag(e, tolerance) {
+    const x = pointerX(e);
+    const step = dragStep(this.#dragOrigin, x, tolerance);
+
+    if (step === 0) {
+      return;
+    }
+
+    this.#threesixty.stop();
+    step < 0 ? this.#threesixty.prev() : this.#threesixty.next();
+    this.#dragOrigin = x;
+  }
+
+  _onKeydown(e) {
+    if (isEditableTarget(e.target)) {
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        this.#threesixty.prev();
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        this.#threesixty.next();
+        break;
+      case 'Home':
+        e.preventDefault();
+        this.#threesixty.goto(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        this.#threesixty.goto(-1);
+        break;
+    }
+  }
+
   destroy() {
     this.#options.swipeTarget.removeEventListener('mousedown', this.#eventHandlers.container.mousedown);
     this.#options.swipeTarget.removeEventListener('touchstart', this.#eventHandlers.container.touchstart);
     this.#options.swipeTarget.removeEventListener('touchend', this.#eventHandlers.container.touchend);
+    this.#threesixty.container.removeEventListener('keydown', this.#eventHandlers.container.keydown);
 
     window.removeEventListener('mouseup', this.#eventHandlers.global.mouseup);
     window.removeEventListener('mousemove', this.#eventHandlers.global.mousemove);
     window.removeEventListener('touchmove', this.#eventHandlers.global.touchmove);
-    window.removeEventListener('keydown', this.#eventHandlers.global.keydown);
-    window.removeEventListener('keyup', this.#eventHandlers.global.keyup);
 
     if (this.#options.prev) {
       this.#options.prev.removeEventListener('mousedown', this.#eventHandlers.prev.mousedown);
@@ -111,8 +137,7 @@ class Events {
     }
 
     if (this.#options.keys) {
-      window.addEventListener('keydown', this.#eventHandlers.global.keydown);
-      window.addEventListener('keyup', this.#eventHandlers.global.keyup);
+      this.#threesixty.container.addEventListener('keydown', this.#eventHandlers.container.keydown);
     }
 
     if (this.#options.prev) {

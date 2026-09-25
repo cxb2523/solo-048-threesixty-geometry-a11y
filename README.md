@@ -51,7 +51,7 @@ threesixty.play();
 
   // Sprite options (If array of images are provided, these options are ignored)
   count: 30,                   // Total number of images. Default: 0
-  perRow: 5,                   // Number of images per row. Default: 0
+  perRow: 5,                   // Number of images per row. Default: 0 (falls back to a single column)
 
   // Width & Height
   width: 300,  // Image width. Default 300
@@ -60,7 +60,7 @@ threesixty.play();
   // Navigation
   prev: document.getElementById('prev'), // Previous button element. Default: null
   next: document.getElementById('next'), // Next button element. Default: null
-  keys: true,         // Rotate image on arrow keys. Default: true
+  keys: true,         // Keyboard controls when the viewer is focused. Default: true
   draggable: true,    // Rotate image by dragging. Default: true
   swipeable: true,    // Rotate image by swiping on mobile screens. Default: true
   dragTolerance: 10,  // Rotation speed when dragging. Default: 10
@@ -88,6 +88,19 @@ new ThreeSixty(document.getElementById('threesixty'), {
 })
 ```
 In this case options `count` and `perRow` are ignored.
+
+### Accessibility
+
+The container is focusable (`tabindex="0"`) and exposed as `role="slider"` with
+`aria-valuemin`/`aria-valuemax`/`aria-valuenow` reflecting the current frame.
+When the viewer is focused:
+
+- `ArrowLeft` / `ArrowRight` step one frame back/forward
+- `Home` / `End` jump to the first/last frame
+
+Key events originating from editable elements (`input`, `textarea`, `select`,
+`contenteditable`) are ignored, so the viewer never steals arrow keys from
+form fields.
 
 ### Methods
 
